@@ -21,22 +21,18 @@ import com.alibaba.fastjson.JSONObject;
 
 public class MapTunnelProcessor implements ConnectionProcessor{
 
-	Socket dstSocket=null;
+	Socket dstSocket=null;//标准库java.net.Socket
 
-	boolean closed=false;
+	boolean closed=false;//bool变量
 
-	MapTunnelProcessor pc;
+	MapTunnelProcessor pc;//this对象
 
-	ConnectionUDP conn;
+	ConnectionUDP conn;//net.fs.rudp.ConnectionUDP
+	UDPInputStream  tis;//net.fs.rudp.UDPInputStream
+	UDPOutputStream tos;//net.fs.rudp.UDPOutputStream
 
-
-	UDPInputStream  tis;
-
-	UDPOutputStream tos;
-
-	InputStream sis;
-
-	OutputStream sos;
+	InputStream sis;//标准库java.io.InputStream
+	OutputStream sos;//标准库java.io.OutputStream
 
 	public void process(final ConnectionUDP conn){
 		this.conn=conn;
@@ -62,7 +58,7 @@ public class MapTunnelProcessor implements ConnectionProcessor{
 			final int dstPort=requestJSon.getIntValue("dst_port");
 			String message="";
 			JSONObject responeJSon=new JSONObject();
-			int code=Constant.code_failed;			
+			int code=Constant.code_failed;
 			code=Constant.code_success;
 			responeJSon.put("code", code);
 			responeJSon.put("message", message);

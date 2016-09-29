@@ -1,4 +1,4 @@
-// Copyright (c) 2015 D1SM.net
+// Copyright (c) 2015 D1SM.netabstract
 
 package net.fs.rudp;
 import java.net.DatagramPacket;
@@ -19,21 +19,21 @@ public class ConnectionUDP {
 	private boolean connected=true;
 	long lastLiveTime=System.currentTimeMillis();
 	long lastSendLiveTime=0;
-	
+
 	static Random ran=new Random();
-	
+
 	int connectId;
-	
+
 	ConnectionProcessor connectionProcessor;
-	
+
 	private LinkedBlockingQueue<DatagramPacket> dpBuffer=new LinkedBlockingQueue<DatagramPacket>();
-	
+
 	public ClientControl clientControl;
-	
+
 	public boolean localClosed=false,remoteClosed=false,destroied=false;
-	
+
 	public boolean stopnow=false;
-	
+
 	public ConnectionUDP(Route ro,InetAddress dstIp,int dstPort,int mode,int connectId,ClientControl clientControl) throws Exception {
 		this.clientControl=clientControl;
 		this.route=ro;
@@ -43,7 +43,7 @@ public class ConnectionUDP {
 		if(mode==1){
 			//MLog.println("                 发起连接RUDP "+dstIp+":"+dstPort+" connectId "+connectId);
 		}else if(mode==2){
-			
+
 			//MLog.println("                 接受连接RUDP "+dstIp+":"+dstPort+" connectId "+connectId);
 		}
 		this.connectId=connectId;
@@ -71,21 +71,21 @@ public class ConnectionUDP {
 				notifyAll();
 			}
 	}
-	
+
 	public DatagramPacket getPacket(int connectId) throws InterruptedException{
 		DatagramPacket dp=(DatagramPacket)dpBuffer.take();
 		return dp;
 	}
-	
+
 	@Override
 	public String toString(){
 		return new String(dstIp+":"+dstPort);
 	}
-	
+
 	public boolean isConnected(){
 		return connected;
 	}
-	
+
 	public void close_local(){
 		if(!localClosed){
 			localClosed=true;
@@ -95,14 +95,14 @@ public class ConnectionUDP {
 			destroy(false);
 		}
 	}
-	
+
 	public void close_remote() {
 		if(!remoteClosed){
 			remoteClosed=true;
 			destroy(false);
 		}
 	}
-	
+
 	//完全关闭
 	public void destroy(boolean force){
 		if(!destroied){
@@ -118,11 +118,11 @@ public class ConnectionUDP {
 			}
 		}
 	}
-	
+
 	public void close_timeout(){
 		////#MLog.println("超时关闭RDP连接");
 	}
-	
+
 	void live(){
 		lastLiveTime=System.currentTimeMillis();
 	}

@@ -55,7 +55,7 @@ public class FSServer {
 		MLog.info("FinalSpeed server starting... ");
 		MLog.info("System Name: " + systemName);
 		udpServer = this;
-		final MapTunnelProcessor mp = new MapTunnelProcessor();//参见MapTunnelProcessor.java的构造函数
+		final MapTunnelProcessor mp = new MapTunnelProcessor();//此处应该是整个服务端的核心，参见./src/net/fs/server/MapTunnelProcessor.java
 
 		String port_s = readFileData("./cnf/listen_port");//读取监听的端口
 		if (port_s != null && !port_s.trim().equals("")) {
@@ -65,7 +65,7 @@ public class FSServer {
 		route_udp = new Route(mp.getClass().getName(), (short) routePort, Route.mode_server, false,true);
 		if (systemName.equals("linux")) {//根据不同的操作系统配置防火墙
 			startFirewall_linux();//打开iptables
-			setFireWall_linux_udp();//给iptables开端口
+			setFireWall_linux_udp();//给iptables开UDP端口
 		}else if(systemName.contains("windows")){
 			startFirewall_windows();//配置windows防火墙
 		}
@@ -77,7 +77,7 @@ public class FSServer {
 				try {
 					route_tcp = new Route(mp.getClass().getName(), (short) routePort, Route.mode_server, true,true);
 					if (systemName.equals("linux")) {
-						setFireWall_linux_tcp();
+						setFireWall_linux_tcp();//给iptables开TCP端口
 					}else if(systemName.contains("windows")){
 						if(success_firewall_windows){
 							setFireWall_windows_tcp();
