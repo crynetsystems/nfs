@@ -28,9 +28,10 @@ public class FSServer {
 	static FSServer udpServer;
 
 	String systemName = System.getProperty("os.name").toLowerCase();
-	
+
 	boolean success_firewall_windows=true;
 
+  //主函数负责构造一个FSServer然后就什么都没有做了
 	public static void main(String[] args) {
 		try {
 			FSServer fs = new FSServer();
@@ -48,24 +49,25 @@ public class FSServer {
 		return udpServer;
 	}
 
+	//构造函数起始位置
 	public FSServer() throws Exception {
 		MLog.info("");
 		MLog.info("FinalSpeed server starting... ");
 		MLog.info("System Name: " + systemName);
 		udpServer = this;
-		final MapTunnelProcessor mp = new MapTunnelProcessor();
+		final MapTunnelProcessor mp = new MapTunnelProcessor();//参见MapTunnelProcessor.java的构造函数
 
-		String port_s = readFileData("./cnf/listen_port");
+		String port_s = readFileData("./cnf/listen_port");//读取监听的端口
 		if (port_s != null && !port_s.trim().equals("")) {
 			port_s = port_s.replaceAll("\n", "").replaceAll("\r", "");
 			routePort = Integer.parseInt(port_s);
 		}
 		route_udp = new Route(mp.getClass().getName(), (short) routePort, Route.mode_server, false,true);
-		if (systemName.equals("linux")) {
-			startFirewall_linux();
-			setFireWall_linux_udp();
+		if (systemName.equals("linux")) {//根据不同的操作系统配置防火墙
+			startFirewall_linux();//打开iptables
+			setFireWall_linux_udp();//给iptables开端口
 		}else if(systemName.contains("windows")){
-			startFirewall_windows();
+			startFirewall_windows();//配置windows防火墙
 		}
 
 		Route.es.execute(new Runnable() {
@@ -90,7 +92,7 @@ public class FSServer {
 		});
 
 	}
-	
+  //构造函数终止位置
 	void startFirewall_windows(){
 
 		String runFirewall="netsh advfirewall set allprofiles state on";
@@ -103,12 +105,12 @@ public class FSServer {
 					InputStream is=p.getInputStream();
 					BufferedReader localBufferedReader = new BufferedReader(new InputStreamReader(is));
 					while (true){
-						String line; 
+						String line;
 						try {
 							line = localBufferedReader.readLine();
-							if (line == null){ 
+							if (line == null){
 								break;
-							}else{ 
+							}else{
 								if(line.contains("Windows")){
 									success_firewall_windows=false;
 								}
@@ -122,18 +124,18 @@ public class FSServer {
 				}
 			};
 			standReadThread.start();
-			
+
 			errorReadThread=new Thread(){
 				public void run(){
 					InputStream is=p.getErrorStream();
 					BufferedReader localBufferedReader = new BufferedReader(new InputStreamReader(is));
 					while (true){
-						String line; 
+						String line;
 						try {
 							line = localBufferedReader.readLine();
-							if (line == null){ 
+							if (line == null){
 								break;
-							}else{ 
+							}else{
 								System.out.println("error"+line);
 							}
 						} catch (IOException e) {
@@ -150,7 +152,7 @@ public class FSServer {
 			success_firewall_windows=false;
 			//error();
 		}
-		
+
 		if(standReadThread!=null){
 			try {
 				standReadThread.join();
@@ -165,9 +167,9 @@ public class FSServer {
 				e.printStackTrace();
 			}
 		}
-	
+
 	}
-	
+
 	void setFireWall_windows_tcp() {
 		cleanRule_windows();
 		try {
@@ -187,7 +189,7 @@ public class FSServer {
 			e1.printStackTrace();
 		}
 	}
-	
+
 	void cleanRule_windows(){
 		try {
 			if(systemName.contains("xp")||systemName.contains("2003")){
@@ -199,11 +201,11 @@ public class FSServer {
 				final Process p1 = Runtime.getRuntime().exec(cmd_delete,null);
 				p1.waitFor();
 			}
-		
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	
+
 	}
 
 	void startFirewall_linux() {
