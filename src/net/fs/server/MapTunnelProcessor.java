@@ -20,6 +20,7 @@ import com.alibaba.fastjson.JSONObject;
 
 
 public class MapTunnelProcessor implements ConnectionProcessor{
+	// 实现 ConnectionProcessor 接口，位于 net/fs/rudp/ConnectionProcessor.java
 
 	Socket dstSocket=null;//标准库java.net.Socket
 
@@ -34,6 +35,11 @@ public class MapTunnelProcessor implements ConnectionProcessor{
 	InputStream sis;//标准库java.io.InputStream
 	OutputStream sos;//标准库java.io.OutputStream
 
+	/**
+	 * MapTunnelProcessor 接口函数，用于记录参数并启动线程
+	 * 
+	 * @param conn 传入的连接？
+	 */
 	public void process(final ConnectionUDP conn){
 		this.conn=conn;
 		pc=this;
@@ -45,6 +51,9 @@ public class MapTunnelProcessor implements ConnectionProcessor{
 	}
 
 
+	/**
+	 * 私有函数，线程的主体
+	 */
 	void process(){
 
 		tis=conn.uis;

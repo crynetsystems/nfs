@@ -21,12 +21,24 @@ public class FSServer {
 
 	ConnectionProcessor imTunnelProcessor;
 
+	/**
+	 * Route 实例，全局变量，防止因为构造函数执行完毕而被销毁
+	 */
 	Route route_udp, route_tcp, route;
 
+	/**
+	 * 服务端监听端口
+	 */
 	int routePort = 150;
 
+	/**
+	 * 这个变量是程序执行时创建的，是 fs 的根基，UDP 模式
+	 */
 	static FSServer udpServer;
 
+	/**
+	 * 操作系统名称，还转换成了小写
+	 */
 	String systemName = System.getProperty("os.name").toLowerCase();
 
 	boolean success_firewall_windows=true;
@@ -62,20 +74,53 @@ public class FSServer {
 			port_s = port_s.replaceAll("\n", "").replaceAll("\r", "");
 			routePort = Integer.parseInt(port_s);
 		}
+		
+		// Route 才是重点
+		/*
+		 * 这是我见过最 SB 的设计：
+		 * 首先 61 行 final MapTunnelProcessor mp = new MapTunnelProcessor();
+		 * 创建了 MapTunnelProcessor 的一个实例  mp
+		 * 通过 mp.getClass().getName() 获取这个实例对应的类的完整名称 "net.fs.server.MapTunnelProcessor"
+		 * 然后将这个实例的完整类名传递给了 Route 类的构造函数
+		 * 然后 Route 类记录下这个类名
+		 * 然后在后期 Route 类的 createTunnelProcessor 函数会被调用 (ConnectionUDP 类的构造函数里)
+		 * 这个函数的作用就是根据那个类名重新创建这个类 (MapTunnelProcessor) 的实例，并作为返回值返回
+		 * 。。。
+		 * 这个 mp 变量的作用
+		 * 。。。
+		 * 就是
+		 * 。。。
+		 * 获取一个完整的类名 net.fs.server.MapTunnelProcessor 而已
+		 * 。。。
+		 * 然后
+		 * 。。。
+		 * 它就没有作用了
+		 * 。。。
+		 * 最后因为函数执行完毕，离开作用域而被销毁
+		 */
 		route_udp = new Route(mp.getClass().getName(), (short) routePort, Route.mode_server, false,true);
+		
+		/* -- 以下代码可忽略 -- */
 		if (systemName.equals("linux")) {//根据不同的操作系统配置防火墙
 			startFirewall_linux();//打开iptables
 			setFireWall_linux_udp();//给iptables开UDP端口
 		}else if(systemName.contains("windows")){
 			startFirewall_windows();//配置windows防火墙
 		}
+		/* -- 以上代码可忽略 -- */
 
 		Route.es.execute(new Runnable() {
 
+			/**
+			 * 基于 TCP 的连接另开一个线程
+			 */
 			@Override
 			public void run() {
 				try {
 					route_tcp = new Route(mp.getClass().getName(), (short) routePort, Route.mode_server, true,true);
+					
+					
+					/* -- 以下代码可忽略 -- */
 					if (systemName.equals("linux")) {
 						setFireWall_linux_tcp();//给iptables开TCP端口
 					}else if(systemName.contains("windows")){
@@ -85,6 +130,8 @@ public class FSServer {
 							System.out.println("启动windows防火墙失败,请先运行防火墙服务.");
 						}
 					}
+					/* -- 以上代码可忽略 -- */
+					
 				} catch (Exception e) {
 					// e.printStackTrace();
 				}

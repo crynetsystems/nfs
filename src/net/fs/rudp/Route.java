@@ -24,6 +24,11 @@ import net.fs.utils.MLog;
 import net.fs.utils.MessageCheck;
 
 
+/**
+ * 
+ * @author hackpascal
+ *
+ */
 public class Route {
 
 	private DatagramSocket ds;
@@ -46,10 +51,19 @@ public class Route {
 
 	LinkedBlockingQueue<DatagramPacket> packetBuffer=new LinkedBlockingQueue<DatagramPacket>();
 	
+	/**
+	 * Route 模式：服务端
+	 */
 	public static int mode_server=2;
 	
+	/**
+	 * Route 模式：客户端
+	 */
 	public static int mode_client=1;
 
+	/**
+	 * Route 实际模式
+	 */
 	public int mode=mode_client;//1客户端,2服务端
 	
 	String pocessName="";
@@ -70,6 +84,9 @@ public class Route {
 	
 	public ClientControl lastClientControl;
 	
+	/**
+	 * 是否使用  TCP 模式
+	 */
 	public boolean useTcpTun=true;
 	
 	public HashMap<Object, Object> contentTable=new HashMap<Object, Object>();
@@ -87,13 +104,24 @@ public class Route {
 		es=executor;
 	}
 	
+	/**
+	 * Route 构造函数
+	 * 
+	 * @param pocessName	处理类的类名
+	 * @param routePort		监听端口
+	 * @param mode2 		模式 (客户端/服务端)
+	 * @param tcp			是否使用  TCP 模式
+	 * @param tcpEnvSuccess
+	 * @throws Exception
+	 */
 	public Route(String pocessName,short routePort,int mode2,boolean tcp,boolean tcpEnvSuccess) throws Exception{
 		
 		this.mode=mode2;
 		useTcpTun=tcp;
 		this.pocessName=pocessName;
+		
 		if(useTcpTun){
-			if(mode==2){
+			if(mode==Route.mode_server){
 				//服务端
 				VDatagramSocket d=new VDatagramSocket(routePort);
 				d.setClient(false);
@@ -124,7 +152,7 @@ public class Route {
 				ds=d;
 			}
 		}else {
-			if(mode==2){
+			if(mode==Route.mode_server){
 				MLog.info("Listen udp port: "+CapEnv.toUnsigned(routePort));
 				ds=new DatagramSocket(CapEnv.toUnsigned(routePort));
 			}else {
