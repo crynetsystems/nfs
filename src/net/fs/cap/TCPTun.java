@@ -21,7 +21,13 @@ import org.pcap4j.packet.TcpPacket;
 import org.pcap4j.packet.TcpPacket.TcpHeader;
 import org.pcap4j.util.MacAddress;
 
-
+/**
+ * 自己实现的 TCP 会话管理功能
+ * 用于绕开系统对于 TCP 的流控
+ * 
+ * @author hackpascal
+ *
+ */
 public class TCPTun {
 
 	HashMap<Integer,TcpPacket>  sendedTable_server=new HashMap<Integer,TcpPacket> ();

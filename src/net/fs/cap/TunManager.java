@@ -8,6 +8,12 @@ import java.util.Iterator;
 import net.fs.rudp.CopiedIterator;
 import net.fs.utils.MLog;
 
+/**
+ * 自己实现的 TCP 会话管理功能的      TCP 连接管理器
+ * 
+ * @author hackpascal
+ *
+ */
 public class TunManager {
 	
 	HashMap<String, TCPTun> connTable=new HashMap<String, TCPTun>();
