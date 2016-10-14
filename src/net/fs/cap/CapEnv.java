@@ -230,7 +230,7 @@ public class CapEnv {
 						conn.process_client(capEnv,packet,head_eth,ipV4Header,tcpPacket,false);
 					}
 				}else {
-					// 如果是客户端，那么检查 tcpManager 里面是否记录了此 TCP 连接
+					// 如果是服务端，那么检查 tcpManager 里面是否记录了此 TCP 连接
 					// 检查项目包含 源IP地址、源端口
 					TCPTun conn=null;conn = tcpManager.getTcpConnection_Server(ipV4Header.getSrcAddr().getHostAddress(),tcpHeader.getSrcPort().value());
 					if(tcpHeader.getDstPort().value()==listenPort){
@@ -566,6 +566,13 @@ public class CapEnv {
         return sb.toString();
     }
 	
+	/**
+	 * 创建客户端 TCP 连接 (发起连接)，并加入到 tcpManager
+	 * 
+	 * @param dstAddress	目的 IP 地址
+	 * @param dstPort		目的端口
+	 * @throws Exception
+	 */
 	public void createTcpTun_Client(String dstAddress,short dstPort) throws Exception{
 		Inet4Address serverAddress=(Inet4Address) Inet4Address.getByName(dstAddress);
 		TCPTun conn=new TCPTun(this,serverAddress,dstPort,local_mac,gateway_mac);
@@ -583,6 +590,7 @@ public class CapEnv {
 			}
 		}
 		if(success){
+			// 如果成功就作为和服务端通信的通道
 			tcpManager.setDefaultTcpTun(conn);
 		}else {
 			tcpManager.removeTun(conn);

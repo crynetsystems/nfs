@@ -81,8 +81,14 @@ public class TCPTun {
 
 	Thread resendScanThread;
 
+	/**
+	 * 连接是否被成功创建
+	 */
 	boolean connectReady=false;
 
+	/**
+	 * 连接创建后，是否有负载通过
+	 */
 	boolean preDataReady=false;
 	
 	CapEnv capEnv;
@@ -112,7 +118,15 @@ public class TCPTun {
 	
 	Object syn_ident=new Object();
 	
-	//客户端发起
+	/**
+	 * 构造函数，发起连接 (客户端使用)
+	 * 
+	 * @param capEnv			监听抓包的接口
+	 * @param serverAddress		目的 IP 地址
+	 * @param serverPort		目的端口
+	 * @param srcAddress_mac	源 MAC 地址，即 capEnv 所监听的接口的 MAC 地址
+	 * @param dstAddrress_mac	目的 MAC 地址，即网关的 MAC 地址
+	 */
 	TCPTun(CapEnv capEnv,
 			Inet4Address serverAddress,short serverPort,
 			MacAddress srcAddress_mac,MacAddress dstAddrress_mac){
@@ -123,6 +137,8 @@ public class TCPTun {
 		localAddress=capEnv.local_ipv4;
 		localPort=(short)(random.nextInt(64*1024-1-10000)+10000);
 		Packet syncPacket=null;
+		
+		// 发送第一次握手包，SYN 包
 		try {
 			syncPacket = PacketUtils.createSync(srcAddress_mac, dstAddrress_mac, localAddress, localPort,serverAddress, serverPort, localStartSequence,getIdent());
 			try {
@@ -139,7 +155,13 @@ public class TCPTun {
 		
 	}
 
-	//服务端接收
+	/**
+	 * 构造函数，接受连接 (服务端使用)
+	 * 
+	 * @param capServerEnv		监听抓包的接口
+	 * @param remoteAddress		源 IP 地址
+	 * @param remotePort		源端口
+	 */
 	TCPTun(CapEnv capServerEnv,
 			Inet4Address remoteAddress,short remotePort){
 		this.capEnv=capServerEnv;
@@ -162,6 +184,15 @@ public class TCPTun {
 
 	}
 
+	/**
+	 * 处理数据包，服务端使用
+	 * 
+	 * @param packet			原始以太网数据包
+	 * @param ethernetHeader	以太网包头
+	 * @param ipV4Header		IPv4 包头
+	 * @param tcpPacket			TCP 数据，含包头
+	 * @param client
+	 */
 	public void process_server(final Packet packet,EthernetHeader ethernetHeader,IpV4Header ipV4Header,TcpPacket tcpPacket,boolean client){
 		TcpHeader tcpHeader=tcpPacket.getHeader();
 		
@@ -170,6 +201,7 @@ public class TCPTun {
 				//第一次握手
 				dstMacaAddress=ethernetHeader.getSrcAddr();
 				if(tcpHeader.getSyn()&&!tcpHeader.getAck()){
+					// 解析第一次握手数据
 					remoteStartSequence=tcpHeader.getSequenceNumber();
 					remoteSequence=remoteStartSequence+1;
 					remoteSequence_max=remoteSequence;
@@ -182,6 +214,7 @@ public class TCPTun {
 							ipV4Header.getSrcAddr(),tcpHeader.getSrcPort().value(),
 							tcpHeader.getSequenceNumber()+1,localStartSequence,(short)0
 							);
+					// 发送第二次握手数据
 					try {
 						sendHandle.sendPacket(responePacket);
 					} catch (Exception e) {
@@ -193,6 +226,7 @@ public class TCPTun {
 					MLog.println(""+responePacket);
 				}
 
+				// 解析第三次握手数据
 				if(!tcpHeader.getSyn()&&tcpHeader.getAck()){
 					if(tcpPacket.getPayload()==null){
 						//第三次握手,客户端确认
@@ -217,18 +251,23 @@ public class TCPTun {
 				
 			}else {
 				if(tcpPacket.getPayload()!=null){
+					// 有负载
 					preDataReady=true;
+					// 响应报文
 					onReceiveDataPacket( tcpPacket, tcpHeader, ipV4Header );
+					// HTTP 伪装，模拟响应
 					byte[] sim=getSimResponeHead();
 					sendData(sim);
 				}
 			}
 		}else {
 			if(tcpPacket.getPayload()!=null){
+				// 响应报文
 				onReceiveDataPacket( tcpPacket, tcpHeader, ipV4Header );
 				TunData td=new TunData();
 				td.tun=this;
 				td.data=tcpPacket.getPayload().getRawData();
+				// TODO: 
 				capEnv.vDatagramSocket.onReceinveFromTun(td);
 			}
 		}
@@ -237,7 +276,17 @@ public class TCPTun {
 		}
 
 	}
-
+	
+	/**
+	 * 处理数据包，客户端使用
+	 * 
+	 * @param capEnv			监听抓包的接口
+	 * @param packet			原始以太网数据包
+	 * @param ethernetHeader	以太网包头
+	 * @param ipV4Header		IPv4 包头
+	 * @param tcpPacket			TCP 数据，含包头
+	 * @param client
+	 */
 	public void process_client(CapEnv capEnv,final Packet packet,EthernetHeader ethernetHeader,IpV4Header ipV4Header,TcpPacket tcpPacket,boolean client){
 
 		TcpHeader tcpHeader=tcpPacket.getHeader();
@@ -248,6 +297,7 @@ public class TCPTun {
 
 		if(!preDataReady){
 			if(!connectReady){
+				// 处理第二次握手数据
 				if(tcpHeader.getAck()&&tcpHeader.getSyn()){
 					if(tcpHeader.getAcknowledgmentNumber()==(localStartSequence+1)){
 						MLog.println("接收第二次握手 "+" ident "+ipV4Header.getIdentification());
@@ -262,6 +312,7 @@ public class TCPTun {
 							MLog.println(""+p3);
 							connectReady=true;
 							
+							// 模拟 HTTP 请求
 							byte[] sim=getSimRequestHead(remotePort);
 							sendData(sim);
 							MLog.println("发送请求 "+" ident "+localIdent);
@@ -274,6 +325,7 @@ public class TCPTun {
 				}
 			}else {
 				if(tcpPacket.getPayload()!=null){
+					// 响应报文
 					preDataReady=true;
 					onReceiveDataPacket( tcpPacket, tcpHeader, ipV4Header );
 					MLog.println("接收响应 "+" ident "+ipV4Header.getIdentification());
@@ -283,12 +335,13 @@ public class TCPTun {
 		}else {
 			if(tcpPacket.getPayload()!=null){
 				//MLog.println("客户端正式接收数据 "+capClientEnv.vDatagramSocket);
+				// 响应报文
 				onReceiveDataPacket( tcpPacket, tcpHeader, ipV4Header );
 				TunData td=new TunData();
 				td.tun=this;
 				td.data=tcpPacket.getPayload().getRawData();
-				capEnv.vDatagramSocket.
-				onReceinveFromTun(td);
+				// TODO:
+				capEnv.vDatagramSocket.onReceinveFromTun(td);
 			}
 		}
 		if(tcpHeader.getRst()){
@@ -297,6 +350,9 @@ public class TCPTun {
 
 	}
 	
+	/**
+	 * 用于发送 ACK 报文，累计发送方式
+	 */
 	void onReceiveDataPacket(TcpPacket tcpPacket,TcpHeader tcpHeader,IpV4Header ipV4Header ){
 		if(System.currentTimeMillis()-lastSendAckTime>1000){
 			int rs=tcpHeader.getSequenceNumber()+tcpPacket.getPayload().getRawData().length;
@@ -320,6 +376,11 @@ public class TCPTun {
 		}
 	}
 	
+	/**
+	 * 用于发送数据
+	 * 
+	 * @param data		要发送的负载
+	 */
 	void sendData(byte[] data){
 		Packet dataPacket=PacketUtils.createDataPacket(capEnv.local_mac,
 							capEnv.gateway_mac,
