@@ -15,8 +15,15 @@ import net.fs.rudp.UDPInputStream;
 import net.fs.rudp.UDPOutputStream;
 import net.fs.utils.MLog;
 
+/**
+ * 这个类被 Server 调用了
+ * 做个标记，需要研究下，研究数据转发方式以及阻塞和其它事件
+ * 
+ * @author hackpascal
+ *
+ */
 public class Pipe {
-
+	// TODO:
 
 	int lastTime=-1;
 

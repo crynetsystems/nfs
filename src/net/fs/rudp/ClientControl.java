@@ -15,6 +15,12 @@ import net.fs.utils.ByteIntConvert;
 import net.fs.utils.MLog;
 import net.fs.utils.MessageCheck;
 
+/**
+ * 管理一个客户端连接
+ * 
+ * @author hackpascal
+ *
+ */
 public class ClientControl {
 	
 	int clientId;
@@ -84,6 +90,14 @@ public class ClientControl {
 		resendMange = new ResendManage();
 	}
 	
+	/**
+	 * 构造函数，记录 Route 对象、客户端 Id、对方的 IP 地址和端口
+	 * 
+	 * @param route
+	 * @param clientId
+	 * @param dstIp
+	 * @param dstPort
+	 */
 	ClientControl(Route route,int clientId,InetAddress dstIp,int dstPort){
 		this.clientId=clientId;
 		this.route=route;
@@ -91,16 +105,26 @@ public class ClientControl {
 		this.dstPort=dstPort;
 	}
 
+	
+	/**
+	 * 处理 Ping 消息
+	 * 
+	 * @param dp	消息数据
+	 */
 	public void onReceivePacket(DatagramPacket dp){
 		byte[] dpData=dp.getData();
 		int sType=0;
 		sType=MessageCheck.checkSType(dp);
 		int remote_clientId=ByteIntConvert.toInt(dpData, 8);
+		
 		if(sType==net.fs.rudp.message.MessageType.sType_PingMessage){
+			// 解析 PingMessage 报文
 			PingMessage pm=new PingMessage(dp);
+			// 发送 PingMessage2 报文
 			sendPingMessage2(pm.getPingId(),dp.getAddress(),dp.getPort());
 			currentSpeed=pm.getDownloadSpeed()*1024;
 		}else if(sType==net.fs.rudp.message.MessageType.sType_PingMessage2){
+			// 解析 PingMessage2 报文
 			PingMessage2 pm=new PingMessage2(dp);
 			lastReceivePingTime=System.currentTimeMillis();
 			Long t=pingTable.get(pm.getPingId());
@@ -239,7 +263,7 @@ public class ClientControl {
 	
 	//纳秒
 	public synchronized void sendSleep(long startTime,int length){
-		if(route.mode==1){
+		if(route.mode==route.mode_client){
 			currentSpeed=Route.localUploadSpeed;
 		}
 		if(sended==0){

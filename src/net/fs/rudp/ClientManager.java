@@ -10,6 +10,12 @@ import java.util.Iterator;
 import net.fs.utils.MLog;
 
 
+/**
+ * 客户端管理类
+ * 
+ * @author hackpascal
+ *
+ */
 public class ClientManager {
 	
 	HashMap<Integer, ClientControl> clientTable=new HashMap<Integer, ClientControl>();
@@ -24,6 +30,12 @@ public class ClientManager {
 	
 	Object syn_clientTable=new Object();
 	
+	/**
+	 * 构造函数
+	 * 开启线程定时扫描客户端列表
+	 * 
+	 * @param route
+	 */
 	ClientManager(Route route){
 		this.route=route;
 		mainThread=new Thread(){
@@ -42,6 +54,9 @@ public class ClientManager {
 		mainThread.start();
 	}
 	
+	/**
+	 * 扫描客户端，判断客户端是否在线，不在线就删除
+	 */
 	void scanClientControl(){
 		Iterator<Integer> it=getClientTableIterator();
 		long current=System.currentTimeMillis();
@@ -65,6 +80,11 @@ public class ClientManager {
 		}
 	}
 	
+	/**
+	 * 删除客户端对象
+	 * 
+	 * @param clientId		客户端Id
+	 */
 	void removeClient(int clientId){
 		clientTable.remove(clientId);
 	}
@@ -77,6 +97,14 @@ public class ClientManager {
 		return it;
 	}
 	
+	/**
+	 * 获取客户端对象，不存在就创建
+	 * 
+	 * @param clientId		客户端Id
+	 * @param dstIp			源 IP 地址
+	 * @param dstPort		源端口
+	 * @return
+	 */
 	ClientControl getClientControl(int clientId,InetAddress dstIp,int dstPort){
 		ClientControl c=clientTable.get(clientId);
 		if(c==null){

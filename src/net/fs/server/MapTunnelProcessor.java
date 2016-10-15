@@ -18,7 +18,13 @@ import net.fs.utils.MLog;
 
 import com.alibaba.fastjson.JSONObject;
 
-
+/**
+ * 经分析，本类的作用为处理客户端第一次发送的 DataMessage，其内容即为转发目的端口
+ * 仅被服务端调用
+ * 
+ * @author hackpascal
+ *
+ */
 public class MapTunnelProcessor implements ConnectionProcessor{
 	// 实现 ConnectionProcessor 接口，位于 net/fs/rudp/ConnectionProcessor.java
 
@@ -61,6 +67,7 @@ public class MapTunnelProcessor implements ConnectionProcessor{
 
 		byte[] headData;
 		try {
+			// 解析出目的端口
 			headData = tis.read2();
 			String hs=new String(headData,"utf-8");
 			JSONObject requestJSon=JSONObject.parseObject(hs);
@@ -77,14 +84,21 @@ public class MapTunnelProcessor implements ConnectionProcessor{
 				close();
 				return;
 			}
+			
+			// 创建到目的端口的连接
 			dstSocket = new Socket("127.0.0.1", dstPort);
 			dstSocket.setTcpNoDelay(true);
+			
+			// TODO: 这几个类着重分析
 			sis=dstSocket.getInputStream();
 			sos=dstSocket.getOutputStream();
 
+			// TCP入站和出站数据的转发
 			final Pipe p1=new Pipe();
 			final Pipe p2=new Pipe();
 
+			// 具体转发过程待分析
+			// TODO:
 			Route.es.execute(new Runnable() {
 
 				public void run() {

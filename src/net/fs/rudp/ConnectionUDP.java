@@ -6,6 +6,12 @@ import java.net.InetAddress;
 import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * 管理一次连接转发 (单向)
+ * 
+ * @author hackpascal
+ *
+ */
 public class ConnectionUDP {
 	public InetAddress dstIp;
 	public int dstPort;
@@ -34,6 +40,17 @@ public class ConnectionUDP {
 
 	public boolean stopnow=false;
 
+	/**
+	 * 构造函数
+	 * 
+	 * @param ro
+	 * @param dstIp
+	 * @param dstPort
+	 * @param mode
+	 * @param connectId			连接Id，用于标识一次单向转发
+	 * @param clientControl
+	 * @throws Exception
+	 */
 	public ConnectionUDP(Route ro,InetAddress dstIp,int dstPort,int mode,int connectId,ClientControl clientControl) throws Exception {
 		this.clientControl=clientControl;
 		this.route=ro;
@@ -48,11 +65,13 @@ public class ConnectionUDP {
 		}
 		this.connectId=connectId;
 		try {
+			// 创建发送管理器和接收管理器
 			sender=new Sender(this);
 			receiver=new Receiver(this);
 			uos=new UDPOutputStream (this);
 			uis=new UDPInputStream(this);
 			if(mode==2){
+				// 服务端：解析目的端口并进行隧道数据转发
 				ro.createTunnelProcessor().process(this);
 			}
 		} catch (Exception e) {

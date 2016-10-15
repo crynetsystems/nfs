@@ -25,6 +25,7 @@ import net.fs.utils.MessageCheck;
 
 
 /**
+ * 核心功能，用于处理各个客户端连接，并将传入的数据包进行调度
  * 
  * @author hackpascal
  *
@@ -121,11 +122,14 @@ public class Route {
 		this.pocessName=pocessName;
 		
 		if(useTcpTun){
+			// TCP 模式初始化：
 			if(mode==Route.mode_server){
 				//服务端
+				// 创建 UDP 包装对象，用于转发到TCP
 				VDatagramSocket d=new VDatagramSocket(routePort);
 				d.setClient(false);
 				try {
+					// 和接口抓包对象进行绑定
 					capEnv=new CapEnv(false,tcpEnvSuccess);
 					capEnv.setListenPort(routePort);
 					capEnv.init();
@@ -138,6 +142,7 @@ public class Route {
 				ds=d;
 			}else {
 				//客户端
+				// 略
 				VDatagramSocket d=new VDatagramSocket();
 				d.setClient(true);
 				try {
@@ -152,6 +157,8 @@ public class Route {
 				ds=d;
 			}
 		}else {
+			// UDP 模式初始化：
+			// 直接创建 UDP 连接
 			if(mode==Route.mode_server){
 				MLog.info("Listen udp port: "+CapEnv.toUnsigned(routePort));
 				ds=new DatagramSocket(CapEnv.toUnsigned(routePort));
@@ -162,6 +169,8 @@ public class Route {
 		
 		connTable=new HashMap<Integer, ConnectionUDP>();
 		clientManager=new ClientManager(this);
+		
+		// 接收线程，接收到的包存入 packetBuffer
 		reveiveThread=new Thread(){
 			@Override
 			public void run(){
@@ -184,11 +193,13 @@ public class Route {
 				}
 			}
 		};
-		reveiveThread.start();
+		reveiveThread.start();	// 立即启动线程
 
+		// 主线程
 		mainThread=new Thread(){
 			public void run() {
 				while(true){
+					// 获取一个数据包
 					DatagramPacket dp=null;
 					try {
 						dp = packetBuffer.take();
@@ -198,14 +209,16 @@ public class Route {
 					if(dp==null){
 						continue;
 					}
+					// t1 = 计时开始
 					long t1=System.currentTimeMillis();
-					byte[] dpData=dp.getData();
+					byte[] dpData=dp.getData(); // 数据包的实际数据
 					
 					int sType=0;
 					if(dp.getData().length<4){
+						// 不合法的数据，直接退出？？？
 						return;
 					}
-					sType=MessageCheck.checkSType(dp);
+					sType=MessageCheck.checkSType(dp); // 获取报文类型
 					//MLog.println("route receive MessageType111#"+sType+" "+dp.getAddress()+":"+dp.getPort());
 					if(dp!=null){
 						
@@ -219,20 +232,22 @@ public class Route {
 						
 						if(sType==net.fs.rudp.message.MessageType.sType_PingMessage
 								||sType==net.fs.rudp.message.MessageType.sType_PingMessage2){
+							// Ping 包处理，顺便发送上传和下载速率
 							ClientControl clientControl=null;
-							if(mode==2){
+							if(mode==mode_server){
 								//发起
 								clientControl=clientManager.getClientControl(remote_clientId,dp.getAddress(),dp.getPort());
-							}else if(mode==1){
+							}else if(mode==mode_client){
 								//接收
 								String key=dp.getAddress().getHostAddress()+":"+dp.getPort();
 								int sim_clientId=Math.abs(key.hashCode());
 								clientControl=clientManager.getClientControl(sim_clientId,dp.getAddress(),dp.getPort());
 							}
+							// TODO:
 							clientControl.onReceivePacket(dp);
 						}else {
 							//发起
-							if(mode==1){
+							if(mode==mode_client){
 								if(!setedTable.contains(remote_clientId)){
 									String key=dp.getAddress().getHostAddress()+":"+dp.getPort();
 									int sim_clientId=Math.abs(key.hashCode());
@@ -253,9 +268,10 @@ public class Route {
 
 
 							//udp connection
-							if(mode==2){
+							if(mode==mode_server){
 								//接收
 								try {
+									// 多半只是在干这样一件事：不存在就创建
 									getConnection2(dp.getAddress(),dp.getPort(),connectId,remote_clientId);
 								} catch (Exception e) {
 									e.printStackTrace();
@@ -277,7 +293,7 @@ public class Route {
 				}
 			}
 		};
-		mainThread.start();
+		mainThread.start();	// 启动主线程
 		
 	}
 
@@ -300,6 +316,12 @@ public class Route {
 		ds.send(dp);
 	}
 
+	/**
+	 * 创建一个隧道转发对象，解析客户端传入的目的端口，然后开启双向转发
+	 * 仅被服务端使用
+	 * 
+	 * @return
+	 */
 	public ConnectionProcessor createTunnelProcessor(){
 		ConnectionProcessor o=null;
 		try {
@@ -322,7 +344,17 @@ public class Route {
 		}
 	}
 
-	//接收连接
+	/**
+	 * 根据传入的连接参数获取连接对象，没有就创建
+	 * 服务端使用
+	 * 
+	 * @param dstIp			客户端 IP 地址
+	 * @param dstPort		客户端端口
+	 * @param connectId		连接Id
+	 * @param clientId		客户端Id
+	 * @return
+	 * @throws Exception
+	 */
 	public ConnectionUDP getConnection2(InetAddress dstIp,int dstPort,int connectId,int clientId) throws Exception{
 		ConnectionUDP conn=connTable.get(connectId);
 		if(conn==null){
@@ -336,7 +368,15 @@ public class Route {
 		return conn;
 	}
 
-	//发起连接
+	/**
+	 * 发起一个连接，创建客户端对象和连接对象
+	 * 
+	 * @param address		目的 IP 地址
+	 * @param dstPort		目的端口
+	 * @param password		密码
+	 * @return
+	 * @throws Exception
+	 */
 	public ConnectionUDP getConnection(String address,int dstPort,String password) throws Exception{
 		InetAddress dstIp=InetAddress.getByName(address);
 		int connectId=Math.abs(ran.nextInt());
