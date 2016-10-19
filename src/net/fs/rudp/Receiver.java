@@ -19,6 +19,10 @@ public class Receiver {
 	public InetAddress dstIp;
 	public int dstPort;
 	HashMap<Integer, DataMessage> receiveTable=new HashMap<Integer, DataMessage>();
+	/**
+	 * 上次已经成功接收到并处理了的有效数据包的序号
+	 * 类比 TCP 的 ACK 字段
+	 */
 	int lastRead=-1;
 	int lastReceive=-1;
 	Object availOb=new Object();
@@ -110,32 +114,41 @@ public class Receiver {
 				if(ver==RUDPConfig.protocal_ver){
 					conn.live();
 					if(sType==net.fs.rudp.message.MessageType.sType_DataMessage){
+						// 处理传入的数据
 						me=new DataMessage(dp);
-						int timeId=me.getTimeId();
+						int timeId=me.getTimeId();	// 获取 timeId
+						// 查找 timeId 对应的接收记录
 						SendRecord record=conn.clientControl.sendRecordTable_remote.get(timeId);
 						if(record==null){
+							// 没有就创建
 							record=new SendRecord();
 							record.setTimeId(timeId);
+							// TODO: 这个用处待分析
 							conn.clientControl.sendRecordTable_remote.put(timeId, record);
 						}
+						// 将接收到的数据包添加到记录
 						record.addSended(me.getData().length);
 
+						// 更新对方时间
 						if(timeId>currentRemoteTimeId){
 							currentRemoteTimeId=timeId;
 						}
 
+						// 数据包序号
 						int sequence=me.getSequence();
 
-						conn.sender.sendAckDelay(me.getSequence());
+						conn.sender.sendAckDelay(me.getSequence());		// 延迟 ACK
 						if(sequence>lastRead){
+							// 新数据到达
 							synchronized (availOb){
-								receiveTable.put(sequence, me);
+								receiveTable.put(sequence, me);	// 放入接收数据队列
 								if(receiveTable.containsKey(lastRead+1)){
-									availOb.notify();
+									availOb.notify();	// 唤醒等待接收数据的线程
 								}
 							}
 						}
 					}else if(sType==net.fs.rudp.message.MessageType.sType_AckListMessage){
+						// 处理传入的应答
 						AckListMessage alm=new AckListMessage(dp);
 						int lastRead3=alm.getLastRead();
 						if(lastRead3>lastRead2){
@@ -143,10 +156,16 @@ public class Receiver {
 						}
 						ArrayList ackList=alm.getAckList();
 
+						// 挨个删除已经应答了的数据包
 						for(int i=0;i<ackList.size();i++){
 							int sequence=(Integer) ackList.get(i);
 							conn.sender.removeSended_Ack(sequence);
 						}
+						
+						// 以下代码为处理最近三组 timeId 的接手清空
+						// 因为每个组都可能有多个数据包
+						// 这里处理的是每个租的数据包是否都被应答了
+						// 没有的话，如果有新的应答，就更新应答状态
 						SendRecord rc1=conn.clientControl.getSendRecord(alm.getR1());
 						if(rc1!=null){
 							if(alm.getS1()>rc1.getAckedSize()){
@@ -168,6 +187,7 @@ public class Receiver {
 							}
 						}
 
+						// 更新发送窗口
 						if(checkWin()){
 							conn.sender.play();
 						}

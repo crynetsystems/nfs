@@ -40,6 +40,11 @@ public class Route {
 
 	public static ThreadPoolExecutor es;
 	
+	/**
+	 * 延迟 ACK 表
+	 * 用于累积一段时间的 ACK，再一次发送
+	 * 参照 TCP 的 ACK
+	 */
 	public AckListManage delayAckManage;
 
 	Object syn_ds2Table=new Object();
@@ -281,6 +286,9 @@ public class Route {
 							final ConnectionUDP ds3=connTable.get(connectId);
 							if(ds3!=null){
 								final DatagramPacket dp2=dp;
+								// 这里处理不是 Ping 的消息
+								// 但是却依然传递了这些消息
+								// 这设计思路啊。。
 								ds3.receiver.onReceivePacket(dp2);
 								if(sType==MessageType.sType_DataMessage){
 									TrafficEvent event=new TrafficEvent("",ran.nextLong(),dp.getLength(),TrafficEvent.type_downloadTraffic);

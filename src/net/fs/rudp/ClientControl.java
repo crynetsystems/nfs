@@ -247,6 +247,11 @@ public class ClientControl {
 		return record;
 	}
 	
+	/**
+	 * 获取自第一次发送数据后经过的时间
+	 * 
+	 * @return	秒
+	 */
 	public int getCurrentTimeId(){
 		long current=System.currentTimeMillis();
 		if(startSendTime==0){

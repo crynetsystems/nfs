@@ -142,6 +142,10 @@ public class ConnectionUDP {
 		////#MLog.println("超时关闭RDP连接");
 	}
 
+	/**
+	 * 用于通知这个连接还有效
+	 * 实现方法就是更新一个上次记录的存活时间
+	 */
 	void live(){
 		lastLiveTime=System.currentTimeMillis();
 	}

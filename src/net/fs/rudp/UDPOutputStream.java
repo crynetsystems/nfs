@@ -4,6 +4,13 @@ package net.fs.rudp;
 
 import java.net.InetAddress;
 
+/**
+ * 封装 Sender 的 sendData 方法
+ * 这个类的意义何在
+ * 
+ * @author hackpascal
+ *
+ */
 public class UDPOutputStream {
 	public ConnectionUDP conn;
 	InetAddress dstIp;
@@ -12,6 +19,12 @@ public class UDPOutputStream {
 	
 	boolean streamClosed=false;
 	
+	/**
+	 * 将 Sender 的 sendData 方法封装成一个类
+	 * 意义？？
+	 * 
+	 * @param conn
+	 */
 	UDPOutputStream (ConnectionUDP conn){
 		this.conn=conn;
 		this.dstIp=conn.dstIp;

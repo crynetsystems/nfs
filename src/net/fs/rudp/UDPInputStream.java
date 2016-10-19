@@ -5,6 +5,13 @@ package net.fs.rudp;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
+/**
+ * 封装 Receiver 的 receive 方法
+ * 这个类的意义何在。。。
+ * 
+ * @author hackpascal
+ *
+ */
 public class UDPInputStream {
 	
 	DatagramSocket ds;
@@ -16,6 +23,11 @@ public class UDPInputStream {
 	
 	ConnectionUDP conn;
 	
+	/**
+	 * 将 Receiver 的 receive 方法封装成一个类
+	 * 
+	 * @param conn
+	 */
 	UDPInputStream(ConnectionUDP conn){
 		this.conn=conn;
 		receiver=conn.receiver;

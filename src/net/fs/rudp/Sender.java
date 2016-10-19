@@ -14,6 +14,12 @@ import net.fs.rudp.message.CloseMessage_Conn;
 import net.fs.rudp.message.CloseMessage_Stream;
 import net.fs.rudp.message.DataMessage;
 
+/**
+ * RUDP 的发送部分
+ * 
+ * @author hackpascal
+ *
+ */
 public class Sender {
 	DataMessage me2=null;
 	int interval;
@@ -25,13 +31,22 @@ public class Sender {
 	boolean bussy=false;
 	Object bussyOb=new Object();
 	boolean isHave=false;
+	/**
+	 * 数据包发送队列
+	 */
 	public HashMap<Integer, DataMessage> sendTable=new HashMap<Integer, DataMessage>();
 	boolean isReady=false;
 	Object readyOb=new Object();
 	Object winOb=new Object();
 	public InetAddress dstIp;
 	public int dstPort;
+	/**
+	 * 累积数据包序号
+	 */
 	public int sequence=0;
+	/**
+	 * 有效数据包的序号，不含重发的
+	 */
 	int sendOffset=-1;
 	boolean pause=false;
 	int unAckMin=0;
@@ -43,12 +58,18 @@ public class Sender {
 	
 	static Random ran=new Random();
 	
+	/**
+	 * 上次发送数据包的时间
+	 */
 	long lastSendTime=-1;
 	
 	boolean closed=false;
 	
 	boolean streamClosed=false;
 	
+	/**
+	 * 已发送的整个数据包的大小，含协议部分
+	 */
 	static int s=0;
 	
 	Object syn_send_table=new Object();
@@ -63,21 +84,32 @@ public class Sender {
 		this.dstPort=conn.dstPort;
 	}
 	
+	/**
+	 * RUDP 发送数据
+	 * 
+	 * @param data						要发送的数据
+	 * @param offset					跳过数据开头的字节数
+	 * @param length					数据大小，应该是从 offset 开始计算的，吧。。
+	 * @throws ConnectException
+	 * @throws InterruptedException
+	 */
 	void sendData(byte[] data,int offset,int length) throws ConnectException, InterruptedException{
-		int packetLength=RUDPConfig.packageSize;
-		int sum=(length/packetLength);
+		int packetLength=RUDPConfig.packageSize;	// 获取单个包的负载大小
+		int sum=(length/packetLength);				// 计算需要多少个数据包来发送
 		if(length%packetLength!=0){
-			sum+=1;
+			sum+=1;									// 补齐
 		}
 		if(sum==0){
-			sum=1;
+			sum=1;									// 最少1个包
 		}
 		int len=packetLength;
 		if(length<=len){
+			// 如果要发送的数据大小小于一个负载大小
 			sw++;
 			sendNata(data,0,length);
 			sw--;
 		}else{
+			// 那么开始发送多个数据包
 			for(int i=0;i<sum;i++){
 				byte[] b=new byte[len];
 				System.arraycopy(data, offset, b, 0, len);
@@ -90,20 +122,34 @@ public class Sender {
 		}
 	}
 	
+	/**
+	 * RUDP 发送单个数据包，DataMessage
+	 * 
+	 * @param data						要发送的数据
+	 * @param offset					这个参数毫无意义，都是0
+	 * @param length					数据大小
+	 * @throws ConnectException
+	 * @throws InterruptedException
+	 */
 	 void sendNata(byte[] data,int offset,int length) throws ConnectException, InterruptedException{
 		
 		if(!closed){
 			if(!streamClosed){
+				// 创建 DataMessage 数据包
 				DataMessage me=new DataMessage(sequence,data,0,(short) length,conn.connectId,conn.route.localclientId);
 				me.setDstAddress(dstIp);
 				me.setDstPort(dstPort);
 				synchronized (syn_send_table) {
+					// 将数据包丢到发送队列
+					// 需要线程同步
 					sendTable.put(me.getSequence(),me);
 				}
 				
 				synchronized (winOb){
+					// TODO: 检查发送窗口？
 					if(!conn.receiver.checkWin()){
 						try {
+							// 互斥 P 操作
 							winOb.wait();
 						} catch (InterruptedException e) {
 							throw e;
@@ -111,6 +157,9 @@ public class Sender {
 					}
 				}
 				
+				/**
+				 * 是否要发送两次
+				 */
 				boolean twice=false;
 				if(RUDPConfig.twice_tcp){
 					twice=true;
@@ -120,10 +169,14 @@ public class Sender {
 						twice=true;
 					}
 				}
+				
+				// 发送 DataMessage
 				sendDataMessage(me,false,twice,true);
 				lastSendTime=System.currentTimeMillis();
+				// TODO: 这是啥
 				sendOffset++;
 				s+=me.getData().length;
+				// TODO: 待分析
 				conn.clientControl.resendMange.addTask(conn, sequence);
 				sequence++;//必须放最后
 			}else{
@@ -151,16 +204,26 @@ public class Sender {
 		}
 	}
 	
+	/**
+	 * 真·发送数据包
+	 * 
+	 * @param me		// DataMessage 数据包对象
+	 * @param resend	// 是否是重发
+	 * @param twice		// 是否发两次
+	 * @param block		// 发送后是否延时，应该跟流控有关
+	 */
 	void sendDataMessage(DataMessage me,boolean resend,boolean twice,boolean block){
 		synchronized (conn.clientControl.getSynlock()) {
 			long startTime=System.nanoTime();
 			long t1=System.currentTimeMillis();
-			conn.clientControl.onSendDataPacket(conn);
+			conn.clientControl.onSendDataPacket(conn);	//空操作
 			
 			int timeId=conn.clientControl.getCurrentTimeId();
 
+			// 生成数据包数据
 			me.create(timeId);
 
+			// 一个 timeId 的发送记录，因为一秒内可以发送很多包
 			SendRecord record_current=conn.clientControl.getSendRecord(timeId);
 			if(!resend){
 				//第一次发，修改当前时间记录
@@ -175,6 +238,7 @@ public class Sender {
 				record_current.addSended(me.getData().length);
 			}
 			
+			// 嗯。。以下就是发送了
 			try {
 				sendSum++;
 				sum++;
@@ -198,6 +262,11 @@ public class Sender {
 		
 	}
 	
+	/**
+	 * 将一次 ACK 添加到延迟 ACK 表中
+	 * 
+	 * @param ackSequence	ACK 序号
+	 */
 	void sendAckDelay(int ackSequence){
 		conn.route.delayAckManage.addAck(conn, ackSequence);
 	}
@@ -225,13 +294,20 @@ public class Sender {
 		}
 	}
 	
-	//删除后不会重发
+	/**
+	 * 对方已经响应了 ACK 的数据包，可以删除掉了
+	 * @param sequence
+	 */
 	void removeSended_Ack(int sequence){
 		synchronized (syn_send_table) {
 			DataMessage dm=sendTable.remove(sequence);
 		}
 	}
 
+	/**
+	 * 通知可以继续发包了
+	 * 即，发送窗口有空了
+	 */
 	void play(){
 		synchronized (winOb){
 			winOb.notifyAll();

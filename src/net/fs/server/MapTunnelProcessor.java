@@ -28,18 +28,35 @@ import com.alibaba.fastjson.JSONObject;
 public class MapTunnelProcessor implements ConnectionProcessor{
 	// 实现 ConnectionProcessor 接口，位于 net/fs/rudp/ConnectionProcessor.java
 
-	Socket dstSocket=null;//标准库java.net.Socket
+	/**
+	 * FS 到目标服务端口的连接
+	 */
+	Socket dstSocket=null;
 
 	boolean closed=false;//bool变量
 
 	MapTunnelProcessor pc;//this对象
 
 	ConnectionUDP conn;//net.fs.rudp.ConnectionUDP
+	
+	/**
+	 * FS 加速隧道传入的数据
+	 */
 	UDPInputStream  tis;//net.fs.rudp.UDPInputStream
+	/**
+	 * FS 加速隧道传出的数据
+	 */
 	UDPOutputStream tos;//net.fs.rudp.UDPOutputStream
 
-	InputStream sis;//标准库java.io.InputStream
-	OutputStream sos;//标准库java.io.OutputStream
+	/**
+	 * FS 到目标服务端口的连接的输入流，即目标服务->FS
+	 */
+	InputStream sis;
+	
+	/**
+	 * FS 到目标服务端口的连接的输出流，即FS->目标服务
+	 */
+	OutputStream sos;
 
 	/**
 	 * MapTunnelProcessor 接口函数，用于记录参数并启动线程
@@ -62,6 +79,7 @@ public class MapTunnelProcessor implements ConnectionProcessor{
 	 */
 	void process(){
 
+		// 这是 FS 服务端和 FS 客户端的数据流
 		tis=conn.uis;
 		tos=conn.uos;
 

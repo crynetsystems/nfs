@@ -2,6 +2,13 @@
 
 package net.fs.rudp;
 
+/**
+ * 记录数据包的发送情况
+ * 用于处理应答和丢包
+ * 
+ * @author hackpascal
+ *
+ */
 public class SendRecord {
 	
 	int sendSize,sendSize_First;
